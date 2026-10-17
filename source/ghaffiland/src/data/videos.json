@@ -1,0 +1,14 @@
+[
+ {"id":"V01","title":"Apel datang satu-satu","art":"apple","theme":"count","clips":[
+ {"id":"count-2","value":2,"label":"Dua apel","caption":"Ada dua apel. Kita hitung satu per satu: satu, dua.","questionId":"M02-2"},
+ {"id":"count-3","value":3,"label":"Tiga apel","caption":"Sekarang ada tiga apel. Satu, dua, tiga.","questionId":"M02-3"},
+ {"id":"count-4","value":4,"label":"Empat apel","caption":"Ada empat apel. Hitung bersama: satu, dua, tiga, empat.","questionId":"M02-4"}]},
+ {"id":"V02","title":"Warna di studio Ghaffi","art":"palette","theme":"color","clips":[
+ {"id":"color-red","value":"#ed6555","label":"Merah","caption":"Ini warna merah. Perhatikan lingkaran merah yang bergerak.","questionId":"S01-0"},
+ {"id":"color-blue","value":"#67b9eb","label":"Biru","caption":"Ini warna biru. Sekarang lingkarannya berwarna biru.","questionId":"S01-1"},
+ {"id":"color-yellow","value":"#ffda5d","label":"Kuning","caption":"Ini warna kuning. Mari cari warna kuning setelah video.","questionId":"S01-2"}]},
+ {"id":"V03","title":"Bentuk-bentuk bergerak","art":"shapes","theme":"shape","clips":[
+ {"id":"shape-circle","value":"circle","label":"Lingkaran","caption":"Ini lingkaran. Bentuknya bulat dan tidak memiliki sudut.","questionId":"S02-0"},
+ {"id":"shape-square","value":"square","label":"Persegi","caption":"Ini persegi. Ada empat sisi yang sama panjang dan empat sudut.","questionId":"S02-1"},
+ {"id":"shape-triangle","value":"triangle","label":"Segitiga","caption":"Ini segitiga. Ada tiga sisi dan tiga sudut.","questionId":"S02-2"}]}
+]
