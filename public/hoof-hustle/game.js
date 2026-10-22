@@ -14,6 +14,7 @@
   const lerp = (a,b,t) => a + (b-a)*t;
   let W=920,H=540,scale=1,dpr=1;
   let lastTime=0,toastUntil=0,audio=null,muted=false,frameClock=0;
+  let onlineRound=null;
   let state='menu', distance=0, speed=0, time=0, falls=0, steps=0, roll=0, rollSpeed=0, pitch=0, pitchSpeed=0, fallRotation=0, jump=0, wobble=0;
   const down=[false,false,false,false];
   const legs=Array.from({length:4},()=>({phase:0,held:0}));
@@ -77,7 +78,7 @@
     ui();
   }
   function hideScreen(){$('screen').hidden=true;}
-  function reset(){
+  function reset(){onlineRound=window.ArcadeScores?.begin('hoof','race50')||null;
     distance=0;speed=0;time=0;falls=0;steps=0;roll=0;rollSpeed=0;pitch=0;pitchSpeed=0;fallRotation=0;wobble=0;jump=0;
     down.fill(false);legs.forEach(l=>{l.phase=0;l.held=0;});particles.length=0;
     pads.forEach(p=>p.classList.remove('pressed'));
@@ -89,7 +90,7 @@
     state=win?'win':'timeout';
     record.runs=(Number(record.runs)||0)+1;
     record.furthest=Math.max(Number(record.furthest)||0,distance);
-    if(win)record.best=record.best===null?time:Math.min(record.best,time);
+    if(win){record.best=record.best===null?time:Math.min(record.best,time);if(onlineRound)window.ArcadeScores?.end(onlineRound,Math.round(time*1000));}
     saveRecord();
     down.fill(false);pads.forEach(p=>p.classList.remove('pressed'));
     if(win){[520,660,880].forEach((f,i)=>setTimeout(()=>sound(f,.15),100*i));}

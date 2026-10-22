@@ -1,7 +1,7 @@
 (() => {
  'use strict';
  const $=id=>document.getElementById(id);
- const games={snake:{modes:[['classic','Classic'],['chill','Chill'],['turbo','Turbo']],unit:'pts'},orbit:{modes:[['standard','Standard']],unit:'m'},skyhop:{modes:[['world-1','World 1'],['world-2','World 2'],['world-3','World 3']],unit:'koin'}};
+ const games={snake:{modes:[['classic','Classic'],['chill','Chill'],['turbo','Turbo']],unit:'pts'},orbit:{modes:[['standard','Standard']],unit:'m'},skyhop:{modes:[['world-1','World 1'],['world-2','World 2'],['world-3','World 3']],unit:'koin'},hoof:{modes:[['race50','50 Meter']],unit:'ms'},octopus:{modes:[['climb8','8 Meter']],unit:'ms'}};
  const url=new URL(window.location.href);
  let game=games[url.searchParams.get('game')]?url.searchParams.get('game'):'snake';
  let mode=url.searchParams.get('mode');
@@ -13,6 +13,7 @@
   document.querySelectorAll('[data-game]').forEach(b=>{const on=b.dataset.game===game;b.classList.toggle('active',on);b.setAttribute('aria-pressed',String(on));});
  }
  function syncUrl(){const u=new URL(location.href);u.searchParams.set('game',game);u.searchParams.set('mode',mode);if(location.protocol==='http:'||location.protocol==='https:')history.replaceState(null,'',u.pathname+u.search);}
+ function formatScore(n){return games[game].unit==='ms'?(n/1000).toFixed(2)+' s':n.toLocaleString('id-ID')+(game==='orbit'?' m':'');}
  function placeholder(msg){const tr=document.createElement('tr');const td=safeNode('td',msg,'empty');td.colSpan=4;tr.appendChild(td);$('board').replaceChildren(tr);}
  async function refresh(){const seq=++loadSeq;syncUrl();$('refresh').disabled=true;$('boardStatus').textContent='Memuat peringkat terbaru...';placeholder('Sedang mengambil skor...');
   try{
@@ -23,10 +24,10 @@
    for(const item of data.items){const tr=document.createElement('tr');if(item.isMe)tr.classList.add('me');
     const rank=document.createElement('td');rank.appendChild(safeNode('span',item.rank<=3?['🥇','🥈','🥉'][item.rank-1]:'#'+item.rank,item.rank<=3?'medal':''));tr.appendChild(rank);
     const player=document.createElement('td');player.appendChild(safeNode('span',item.nickname));if(item.isMe)player.appendChild(safeNode('span','KAMU','me-mark'));tr.appendChild(player);
-    tr.appendChild(safeNode('td',item.score.toLocaleString('id-ID')+(game==='orbit'?' m':'')));tr.appendChild(safeNode('td',dateText(item.achievedAt)));rows.push(tr);
+    tr.appendChild(safeNode('td',formatScore(item.score)));tr.appendChild(safeNode('td',dateText(item.achievedAt)));rows.push(tr);
    }
    if(rows.length)$('board').replaceChildren(...rows);else placeholder('Belum ada skor. Jadilah pemain pertama!');
-   $('ownRank').textContent=me.rank?'#'+me.rank:'—';$('ownScore').textContent=me.score===null?'—':me.score.toLocaleString('id-ID')+(game==='orbit'?' m':'');
+   $('ownRank').textContent=me.rank?'#'+me.rank:'—';$('ownScore').textContent=me.score===null?'—':formatScore(me.score);
    $('myNote').textContent=me.rank?'Mantap! Main lagi untuk meningkatkan posisi.':'Belum tercatat. Buka game, lalu selesaikan ronde.';
    $('boardStatus').textContent=data.items.length+' pemain ditampilkan · '+(period==='7d'?'7 hari terakhir':'sepanjang masa');
   }catch(e){if(seq!==loadSeq)return;placeholder('Leaderboard belum terhubung. Periksa apakah API sudah aktif.');$('boardStatus').textContent=e.message;$('ownRank').textContent='—';$('ownScore').textContent='—';}finally{if(seq===loadSeq)$('refresh').disabled=false;}

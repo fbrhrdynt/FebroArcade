@@ -33,7 +33,7 @@
           <div class="how-to" id="howTo"><span><b class="dot pink"></b> Q · Kiri belakang</span><span><b class="dot yellow"></b> W · Kanan belakang</span><span><b class="dot blue"></b> O · Kiri depan</span><span><b class="dot green"></b> P · Kanan depan</span></div>
           <div class="modal-tip" id="modalTip"><b>CARA MAIN</b> Tahan tombol untuk mengangkat kaki, lalu <strong>lepas</strong> untuk menendang tanah. Coba gerakkan dua kaki diagonal bergantian.</div>
           <div class="modal-actions"><button class="primary-btn" id="startBtn">MULAI BERLARI <span>↗</span></button><button class="quiet-btn" id="helpBtn">CARA MAIN</button></div>
-          <div class="record" id="recordLabel">REKOR LOKAL · BELUM ADA</div>
+          <div class="record" id="recordLabel">REKOR LOKAL · BELUM ADA</div><div class="record" id="onlineScoreStatus" role="status" aria-live="polite"></div><a class="record" href="/leaderboard/?game=hoof&mode=race50" style="display:block;text-decoration:underline">🏆 LIHAT LEADERBOARD GLOBAL</a>
         </div>
       </div>
       <button class="rise-btn" id="riseBtn" hidden>↻ BANGUN LAGI <span>(R)</span></button>
@@ -50,6 +50,8 @@
     </section>
   </main>
 </div>
-<script src="game.js?v=1" defer></script>
+<script src="/assets/leaderboard-client.js?v=16" defer></script>
+<script src="/assets/player-name.js?v=16" defer></script>
+<script src="game.js?v=16" defer></script>
 </body>
 </html>

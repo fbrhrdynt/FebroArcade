@@ -19,19 +19,28 @@ CREATE INDEX IF NOT EXISTS runs_leaderboard ON runs(game,mode,finished_ms,score)
 CREATE TABLE IF NOT EXISTS bests (player_id TEXT NOT NULL REFERENCES players(id), game TEXT NOT NULL, mode TEXT NOT NULL, score INTEGER NOT NULL, achieved_ms INTEGER NOT NULL, PRIMARY KEY(player_id,game,mode));
 CREATE INDEX IF NOT EXISTS bests_leaderboard ON bests(game,mode,score DESC,achieved_ms ASC);
 `);
-const findPlayer = db.prepare('SELECT id, nickname FROM players WHERE id=?');
-const addPlayer = db.prepare('INSERT INTO players(id,nickname,created_ms) VALUES (?,?,?)');
-const updatePlayer = db.prepare('UPDATE players SET nickname=? WHERE id=?');
+// Migrate legacy players without destroying existing scores.
+const playerCols = db.prepare('PRAGMA table_info(players)').all().map(c=>c.name);
+if (!playerCols.includes('name_set')) {
+  db.exec('ALTER TABLE players ADD COLUMN name_set INTEGER NOT NULL DEFAULT 0');
+  db.exec("UPDATE players SET name_set=1 WHERE nickname NOT GLOB 'Player [0-9A-F][0-9A-F][0-9A-F][0-9A-F]'");
+}
+const findPlayer = db.prepare('SELECT id,nickname,name_set FROM players WHERE id=?');
+const addPlayer = db.prepare('INSERT INTO players(id,nickname,created_ms,name_set) VALUES (?,?,?,0)');
+const updatePlayer = db.prepare('UPDATE players SET nickname=?,name_set=1 WHERE id=?');
 const addSession = db.prepare('INSERT INTO sessions(id,player_id,game,mode,created_ms) VALUES (?,?,?,?,?)');
 const getSession = db.prepare('SELECT * FROM sessions WHERE id=? AND player_id=?');
 const useSession = db.prepare('UPDATE sessions SET finished_ms=? WHERE id=? AND finished_ms IS NULL');
 const addRun = db.prepare('INSERT INTO runs(id,player_id,game,mode,score,finished_ms) VALUES (?,?,?,?,?,?)');
-const upsertBest = db.prepare(`INSERT INTO bests(player_id,game,mode,score,achieved_ms) VALUES (?,?,?,?,?)
+const upsertBestHigh = db.prepare(`INSERT INTO bests(player_id,game,mode,score,achieved_ms) VALUES (?,?,?,?,?)
  ON CONFLICT(player_id,game,mode) DO UPDATE SET score=excluded.score, achieved_ms=excluded.achieved_ms WHERE excluded.score>bests.score`);
+const upsertBestTime = db.prepare(`INSERT INTO bests(player_id,game,mode,score,achieved_ms) VALUES (?,?,?,?,?)
+ ON CONFLICT(player_id,game,mode) DO UPDATE SET score=excluded.score, achieved_ms=excluded.achieved_ms WHERE excluded.score<bests.score`);
 const countRunToday = db.prepare('SELECT COUNT(*) AS n FROM runs WHERE player_id=? AND finished_ms>=?');
 
-const GAME_MODES={snake:['chill','classic','turbo'],orbit:['standard'],skyhop:['world-1','world-2','world-3']};
-const GAME_LABEL={snake:'Neon Snake',orbit:'Orbit Run',skyhop:'SKYHOP'};
+const GAME_MODES={snake:['chill','classic','turbo'],orbit:['standard'],skyhop:['world-1','world-2','world-3'],hoof:['race50'],octopus:['climb8']};
+const GAME_LABEL={snake:'Neon Snake',orbit:'Orbit Run',skyhop:'SKYHOP',hoof:'Hoof Hustle',octopus:'Octo Ascent'};
+const timeGame = game => game === 'hoof' || game === 'octopus';
 const rate=new Map();
 function send(res,status,body,extra={}){
  res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff',...extra});
@@ -42,7 +51,7 @@ function getPlayer(req,res){
  const id = parseCookies(req.headers.cookie).fa_player;
  if(id && /^[a-f0-9]{32}$/.test(id)) {const p=findPlayer.get(id);if(p)return p;}
  const token=crypto.randomBytes(16).toString('hex');
- const player={id:token,nickname:`Player ${token.slice(0,4).toUpperCase()}`};
+ const player={id:token,nickname:`Player ${token.slice(0,4).toUpperCase()}`,name_set:0};
  addPlayer.run(player.id,player.nickname,Date.now());
  res.setHeader('Set-Cookie',`fa_player=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=31536000${PROD?'; Secure':''}`);
  return player;
@@ -73,27 +82,32 @@ function verifyScore(game,mode,score,seconds){
  } else if(game==='skyhop'){
   const max={'world-1':30,'world-2':36,'world-3':42}[mode];
   if(score>max || seconds<5)return 'Skor atau durasi world tidak valid';
+ } else if(timeGame(game)) {
+  if(score < 4000 || score > 90000 || score > seconds*1000+1500) return 'Waktu finis tidak masuk akal';
  }
  return null;
 }
 function queryTop(game,mode,period,limit){
  if(period==='7d'){
   const cutoff=Date.now()-7*86400_000;
+  const dir=timeGame(game)?'ASC':'DESC';
   return db.prepare(`WITH ranked AS (
       SELECT player_id, score, finished_ms AS achieved_ms,
-        ROW_NUMBER() OVER (PARTITION BY player_id ORDER BY score DESC,finished_ms ASC) AS rn
+        ROW_NUMBER() OVER (PARTITION BY player_id ORDER BY score ${dir},finished_ms ASC) AS rn
       FROM runs WHERE game=? AND mode=? AND finished_ms>=?
     ) SELECT r.player_id,p.nickname,r.score,r.achieved_ms FROM ranked r
       JOIN players p ON p.id=r.player_id WHERE r.rn=1
-      ORDER BY r.score DESC,r.achieved_ms ASC LIMIT ?`).all(game,mode,cutoff,limit);
+      ORDER BY r.score ${dir},r.achieved_ms ASC LIMIT ?`).all(game,mode,cutoff,limit);
  }
+ const dir=timeGame(game)?'ASC':'DESC';
  return db.prepare(`SELECT b.player_id,p.nickname,b.score,b.achieved_ms FROM bests b JOIN players p ON p.id=b.player_id
-    WHERE b.game=? AND b.mode=? ORDER BY b.score DESC,b.achieved_ms ASC LIMIT ?`).all(game,mode,limit);
+    WHERE b.game=? AND b.mode=? ORDER BY b.score ${dir},b.achieved_ms ASC LIMIT ?`).all(game,mode,limit);
 }
 function queryMyRank(playerId,game,mode,period){
+ const dir=timeGame(game)?'ASC':'DESC';
  const data=period==='7d'
-  ? db.prepare(`WITH ranked AS (SELECT player_id,score,finished_ms,ROW_NUMBER() OVER (PARTITION BY player_id ORDER BY score DESC,finished_ms ASC) AS rn FROM runs WHERE game=? AND mode=? AND finished_ms>=?) SELECT player_id,score FROM ranked WHERE rn=1 ORDER BY score DESC,finished_ms ASC`).all(game,mode,Date.now()-7*86400_000)
-  : db.prepare(`SELECT player_id,score FROM bests WHERE game=? AND mode=? ORDER BY score DESC,achieved_ms ASC`).all(game,mode);
+  ? db.prepare(`WITH ranked AS (SELECT player_id,score,finished_ms,ROW_NUMBER() OVER (PARTITION BY player_id ORDER BY score ${dir},finished_ms ASC) AS rn FROM runs WHERE game=? AND mode=? AND finished_ms>=?) SELECT player_id,score FROM ranked WHERE rn=1 ORDER BY score ${dir},finished_ms ASC`).all(game,mode,Date.now()-7*86400_000)
+  : db.prepare(`SELECT player_id,score FROM bests WHERE game=? AND mode=? ORDER BY score ${dir},achieved_ms ASC`).all(game,mode);
  const idx=data.findIndex(r=>r.player_id===playerId);
  return idx<0?{rank:null,score:null}:{rank:idx+1,score:data[idx].score};
 }
@@ -110,21 +124,21 @@ const server=http.createServer(async(req,res)=>{
  }
  try{
   const player=getPlayer(req,res);
-  if(req.method==='GET'&&u.pathname==='/api/leaderboard/me')return send(res,200,{id:player.id.slice(0,8),nickname:player.nickname});
+  if(req.method==='GET'&&u.pathname==='/api/leaderboard/me')return send(res,200,{id:player.id.slice(0,8),nickname:player.nickname,nameSet:!!player.name_set});
   if(req.method==='GET'&&['/api/leaderboard/top','/api/leaderboard/mine'].includes(u.pathname)){
    const game=u.searchParams.get('game')||'snake',mode=u.searchParams.get('mode')||GAME_MODES[game]?.[0],period=u.searchParams.get('period')==='7d'?'7d':'all';
    if(!validMode(game,mode))return send(res,400,{error:'Pilihan game/mode tidak valid'});
    if(u.pathname.endsWith('/mine'))return send(res,200,queryMyRank(player.id,game,mode,period));
    const limit=Math.min(50,Math.max(1,Number(u.searchParams.get('limit'))||20));
    const top=queryTop(game,mode,period,limit).map((r,i)=>({rank:i+1,nickname:r.nickname,score:r.score,isMe:r.player_id===player.id,achievedAt:new Date(r.achieved_ms).toISOString()}));
-   return send(res,200,{game,mode,period,unit:game==='orbit'?'m':game==='snake'?'pts':'koin',items:top});
+   return send(res,200,{game,mode,period,unit:timeGame(game)?'ms':game==='orbit'?'m':game==='snake'?'pts':'koin',items:top});
   }
   if(req.method!=='POST')return send(res,404,{error:'Rute tidak ditemukan'});
   const body=await readBody(req);
   if(u.pathname==='/api/leaderboard/profile'){
    const name=cleanName(body.nickname);
    if(!name)return send(res,400,{error:'Nama 2–18 karakter; gunakan huruf, angka, spasi, titik, atau tanda hubung.'});
-   updatePlayer.run(name,player.id);return send(res,200,{nickname:name});
+   updatePlayer.run(name,player.id);return send(res,200,{nickname:name,nameSet:true});
   }
   if(u.pathname==='/api/leaderboard/start'){
    const {game,mode}=body;
@@ -148,7 +162,7 @@ const server=http.createServer(async(req,res)=>{
    try{const consumed=useSession.run(now,runId);
     if(consumed.changes!==1)throw new Error('Ronde telah dipakai');
     addRun.run(runId,player.id,sess.game,sess.mode,body.score,now);
-    upsertBest.run(player.id,sess.game,sess.mode,body.score,now);
+    (timeGame(sess.game)?upsertBestTime:upsertBestHigh).run(player.id,sess.game,sess.mode,body.score,now);
     db.exec('COMMIT');
    }catch(e){db.exec('ROLLBACK');throw e;}
    return send(res,201,{accepted:true,game:sess.game,mode:sess.mode,score:body.score,...queryMyRank(player.id,sess.game,sess.mode,'all')});
