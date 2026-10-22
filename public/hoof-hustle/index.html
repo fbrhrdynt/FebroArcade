@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+  <meta name="theme-color" content="#161d28">
+  <meta name="description" content="Hoof Hustle, game kuda kocak dengan empat tombol. Seimbangkan langkah dan raih finis 50 meter.">
+  <title>Hoof Hustle — Febro Arcade</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css?v=1">
+</head>
+<body>
+<div class="shell" id="app">
+  <header class="topbar">
+    <div class="crumb"><a href="/" class="brand" aria-label="Febro Arcade beranda"><span class="brand-symbol">✳</span> FEBRO<span>ARCADE</span><b>.</b></a><span class="slash">/</span><span class="game-name">HOOF HUSTLE</span></div>
+    <div class="nav-actions"><button class="nav-btn icon-only" id="soundBtn" aria-label="Matikan suara" title="Suara">♪</button><button class="nav-btn icon-only" id="fullscreenBtn" title="Layar penuh" aria-label="Layar penuh">⛶</button><a href="/" class="nav-btn home-btn">⌂ <span>Home</span></a><a href="/" class="nav-btn close-btn" aria-label="Tutup game" title="Tutup game">✕</a></div>
+  </header>
+  <main class="main">
+    <section class="arena" aria-label="Lintasan Hoof Hustle">
+      <canvas id="gameCanvas" aria-label="Lintasan kuda kartun" role="img"></canvas>
+      <div class="hud" aria-live="off">
+        <div class="stat"><span class="stat-caption">JARAK</span><strong id="distLabel">0,0 <small>/ 50 m</small></strong></div>
+        <div class="stat"><span class="stat-caption">WAKTU</span><strong id="timeLabel">90,0 <small>s</small></strong></div>
+        <div class="stat"><span class="stat-caption">TERJATUH</span><strong id="fallsLabel">0</strong></div>
+      </div>
+      <div class="progress" aria-label="Progres ke garis finis"><div class="progress-fill" id="progressFill"></div><span class="progress-end">⚑</span></div>
+      <div class="toast" id="toast" role="status" aria-live="polite"></div>
+      <div class="screen" id="screen" aria-live="polite">
+        <div class="modal" id="modal">
+          <span class="eyebrow" id="modalEyebrow">✦ A TINY HORSE CHALLENGE</span>
+          <h1 id="modalTitle">HOOF<br><em>HUSTLE!</em></h1>
+          <p id="modalDesc">Empat kaki. Empat tombol. Satu tujuan: bawa si kuda kocak ke garis finis tanpa kebanyakan jatuh.</p>
+          <div class="how-to" id="howTo"><span><b class="dot pink"></b> Q · Kiri belakang</span><span><b class="dot yellow"></b> W · Kanan belakang</span><span><b class="dot blue"></b> O · Kiri depan</span><span><b class="dot green"></b> P · Kanan depan</span></div>
+          <div class="modal-tip" id="modalTip"><b>CARA MAIN</b> Tahan tombol untuk mengangkat kaki, lalu <strong>lepas</strong> untuk menendang tanah. Coba gerakkan dua kaki diagonal bergantian.</div>
+          <div class="modal-actions"><button class="primary-btn" id="startBtn">MULAI BERLARI <span>↗</span></button><button class="quiet-btn" id="helpBtn">CARA MAIN</button></div>
+          <div class="record" id="recordLabel">REKOR LOKAL · BELUM ADA</div>
+        </div>
+      </div>
+      <button class="rise-btn" id="riseBtn" hidden>↻ BANGUN LAGI <span>(R)</span></button>
+      <button class="pause-chip" id="pauseBtn" hidden title="Jeda atau lanjutkan">Ⅱ <span>JEDA</span></button>
+    </section>
+    <section class="control-deck" aria-label="Kontrol empat kaki kuda">
+      <div class="control-caption"><div class="caption-title">KENDALIKAN <strong>4 KAKI</strong> <span>· TAHAN &amp; LEPAS</span></div><div class="deck-tip">Coba <b>Q + P</b> lalu <b>W + O</b> <span>↔</span> <button id="resetBtn" title="Mulai ulang permainan">↻ RESTART</button></div></div>
+      <div class="pads">
+        <button class="pad pad-pink" data-leg="0" aria-label="Kaki kiri belakang Q"><span class="pad-key">Q</span><span class="pad-description">KIRI<br>BELAKANG</span><span class="pad-indicator"></span></button>
+        <button class="pad pad-yellow" data-leg="1" aria-label="Kaki kanan belakang W"><span class="pad-key">W</span><span class="pad-description">KANAN<br>BELAKANG</span><span class="pad-indicator"></span></button>
+        <button class="pad pad-blue" data-leg="2" aria-label="Kaki kiri depan O"><span class="pad-key">O</span><span class="pad-description">KIRI<br>DEPAN</span><span class="pad-indicator"></span></button>
+        <button class="pad pad-green" data-leg="3" aria-label="Kaki kanan depan P"><span class="pad-key">P</span><span class="pad-description">KANAN<br>DEPAN</span><span class="pad-indicator"></span></button>
+      </div>
+    </section>
+  </main>
+</div>
+<script src="game.js?v=1" defer></script>
+</body>
+</html>
